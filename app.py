@@ -2,6 +2,7 @@ import streamlit as st
 import pdfplumber
 import io
 import re
+import json
 from docx import Document
 from docx.shared import Pt, Inches, Cm
 from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -757,6 +758,63 @@ def generate_part2_docx(data):
 
 
 # ─────────────────────────────────────────────
+# SESSION EXPORT / IMPORT
+# ─────────────────────────────────────────────
+
+# All state keys that are persisted in the saved JSON file
+_EXPORT_KEYS = [
+    "student_name", "student_id", "thesis_title", "submission_date",
+    "first_supervisor", "second_supervisor",
+    "thesis_points", "criteria", "criterion_9_label", "general_comments_p1",
+    "third_assessor_decision", "third_assessor_proposed_grade",
+    "defense_date", "defense_program", "defense_time_start", "defense_time_end",
+    "defense_mode", "defense_location_link",
+    "defense_first_examiner", "defense_second_examiner", "defense_group_work",
+    "topics", "answers", "special_circumstances", "defense_points",
+]
+
+# Widget keys that must be cleared before restoring so inputs re-render
+_WIDGET_KEYS = (
+    ["hdr_title", "hdr_name", "hdr_id", "hdr_subdate", "hdr_sup1", "hdr_sup2",
+     "p1_gen_comments", "p1_thesis_pts", "crit9_label_input",
+     "third_decision_radio", "third_proposed_input",
+     "p2_defense_date", "p2_program", "p2_tstart", "p2_tend", "p2_mode",
+     "p2_location", "p2_exam1", "p2_exam2", "p2_groupwork",
+     "p2_special_circumstances", "p2_defense_pts"]
+    + [f"input_grade_{i}" for i in range(9)]
+    + [f"input_comment_{i}" for i in range(9)]
+    + [f"p2_topic_{i}" for i in range(6)]
+    + [f"p2_answer_{i}" for i in range(6)]
+)
+
+
+def export_session():
+    """Serialize current evaluation state to JSON bytes."""
+    data = {k: st.session_state.get(k) for k in _EXPORT_KEYS}
+    return json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8")
+
+
+def load_session(json_bytes):
+    """
+    Restore session state from JSON bytes.
+    Clears all widget keys first so Streamlit re-renders inputs with restored values.
+    Returns True on success, False on parse error.
+    """
+    try:
+        data = json.loads(json_bytes.decode("utf-8"))
+    except Exception:
+        return False
+    for wk in _WIDGET_KEYS:
+        st.session_state.pop(wk, None)
+    for k, v in data.items():
+        if k in _EXPORT_KEYS:
+            st.session_state[k] = v
+    # Mark as already extracted so the PDF upload prompt stays collapsed
+    st.session_state.pdf_extracted = True
+    return True
+
+
+# ─────────────────────────────────────────────
 # SESSION STATE
 # ─────────────────────────────────────────────
 def init_session_state():
@@ -891,6 +949,26 @@ def render_sidebar():
         st.divider()
         st.caption("Grades per OMBA Notenübersicht (Dezimalnote)")
         st.caption("Thesis 75% · Defense 25%")
+
+
+def render_session_upload():
+    """Expander that lets users reload a previously saved evaluation session (JSON)."""
+    with st.expander("Continue from a previous evaluation (load saved progress)", expanded=False):
+        st.caption(
+            "Upload the JSON file that was saved after completing Part 1 to pre-fill "
+            "all student and thesis information and pick up where you left off."
+        )
+        uploaded_json = st.file_uploader(
+            "Upload saved evaluation (.json)", type=["json"], key="session_uploader"
+        )
+        if uploaded_json is not None:
+            if st.button("Load saved evaluation", key="btn_load_session"):
+                ok = load_session(uploaded_json.read())
+                if ok:
+                    st.success("Evaluation loaded – all fields have been restored.")
+                    st.rerun()
+                else:
+                    st.error("Could not read the file. Make sure it is a valid saved evaluation JSON.")
 
 
 def render_pdf_upload():
@@ -1166,13 +1244,14 @@ def render_part2():
 def render_downloads():
     st.divider()
     st.subheader("Download Evaluation Documents")
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
+
+    suffix = (st.session_state.student_name or "Student").replace(" ", "_")
 
     with col1:
         st.markdown("**Part 1 – Written Thesis Evaluation**")
         data_p1 = collect_part1_data()
         buf_p1 = generate_part1_docx(data_p1)
-        suffix = (st.session_state.student_name or "Student").replace(" ", "_")
         st.download_button(
             label="Download Part 1 (DOCX)",
             data=buf_p1,
@@ -1190,6 +1269,21 @@ def render_downloads():
             data=buf_p2,
             file_name=f"Thesis_Evaluation_Part2_{suffix}.docx",
             mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            use_container_width=True,
+        )
+
+    with col3:
+        st.markdown("**Save Progress (for Defense session)**")
+        st.caption(
+            "Download this file after completing Part 1. "
+            "Upload it at the start of the Defense session to restore all data."
+        )
+        json_bytes = export_session()
+        st.download_button(
+            label="Save Progress (JSON)",
+            data=json_bytes,
+            file_name=f"Thesis_Evaluation_Progress_{suffix}.json",
+            mime="application/json",
             use_container_width=True,
         )
 
@@ -1211,6 +1305,7 @@ def main():
     st.title("Master Thesis Evaluation Form")
     st.caption("WHU \u2013 Otto Beisheim School of Management  |  Chair of Entrepreneurship, Innovation and Technological Transformation")
 
+    render_session_upload()
     render_pdf_upload()
     st.divider()
     render_header_fields()
