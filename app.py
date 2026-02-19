@@ -2,16 +2,15 @@ import streamlit as st
 import pdfplumber
 import io
 import re
-import json
 from docx import Document
 from docx.shared import Pt, Inches, Cm
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
 
-# ─────────────────────────────────────────────
+# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 # CONSTANTS
-# ─────────────────────────────────────────────
+# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 DEFAULT_SUPERVISOR_1 = "Dries Faems"
 DEFAULT_SUPERVISOR_2 = "Fabian Fritz"
 
@@ -32,7 +31,7 @@ GRADE_LEVELS = [
     "Satisfactory", "Sufficient", "Fail", "N/A",
 ]
 
-# OMBA Notenübersicht – Dezimalnote lookup table
+# OMBA NotenÃƒÂ¼bersicht Ã¢â‚¬â€œ Dezimalnote lookup table
 # Each tuple: (Erreichte Punkte in %, Dezimalnote), sorted descending by %
 # For a given score p: return grade of the first row where threshold <= p
 GRADE_LOOKUP = [
@@ -70,9 +69,9 @@ GRADE_LOOKUP = [
 ]
 
 
-# ─────────────────────────────────────────────
+# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 # PDF EXTRACTION
-# ─────────────────────────────────────────────
+# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 # Regex patterns for robust fallback detection
 _RE_STUDENT_ID   = re.compile(r'\b(\d{6,10})\b')
@@ -95,8 +94,8 @@ def extract_title_page_fields(pdf_bytes):
     """
     Extract student/thesis info from the thesis PDF title page.
     Strategy:
-      1. Structured parse based on WHU title page layout (Master Thesis → title
-         → Chair → Prof. advisor → co-advisor → location, date → name → ID).
+      1. Structured parse based on WHU title page layout (Master Thesis Ã¢â€ â€™ title
+         Ã¢â€ â€™ Chair Ã¢â€ â€™ Prof. advisor Ã¢â€ â€™ co-advisor Ã¢â€ â€™ location, date Ã¢â€ â€™ name Ã¢â€ â€™ ID).
       2. Regex fallbacks scan the full page text for IDs and dates not found
          by the structured pass.
     """
@@ -119,14 +118,14 @@ def extract_title_page_fields(pdf_bytes):
         if not lines:
             return result
 
-        # ── 1. Find "Master Thesis" header (case-insensitive) ──────────
+        # Ã¢â€â‚¬Ã¢â€â‚¬ 1. Find "Master Thesis" header (case-insensitive) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
         start = 0
         for i, line in enumerate(lines):
             if re.fullmatch(r'master\s+thesis', line, re.IGNORECASE):
                 start = i + 1
                 break
 
-        # ── 2. Thesis title: lines between header and Chair/Prof ────────
+        # Ã¢â€â‚¬Ã¢â€â‚¬ 2. Thesis title: lines between header and Chair/Prof Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
         title_lines = []
         chair_idx = start
         for i in range(start, len(lines)):
@@ -137,7 +136,7 @@ def extract_title_page_fields(pdf_bytes):
         if title_lines:
             result["thesis_title"] = " ".join(title_lines)
 
-        # ── 3. Advisor: first Prof. line ────────────────────────────────
+        # Ã¢â€â‚¬Ã¢â€â‚¬ 3. Advisor: first Prof. line Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
         advisor_idx = chair_idx
         for i in range(chair_idx, len(lines)):
             if _RE_PROF.match(lines[i]):
@@ -147,7 +146,7 @@ def extract_title_page_fields(pdf_bytes):
             raw_adv = lines[advisor_idx]
             result["advisor"] = re.sub(r'^Prof[\s.]+(?:Dr[\s.]+)?', '', raw_adv).strip()
 
-        # ── 4. Co-advisor: line immediately after advisor ───────────────
+        # Ã¢â€â‚¬Ã¢â€â‚¬ 4. Co-advisor: line immediately after advisor Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
         co_idx = advisor_idx + 1
         if co_idx < len(lines) and not _RE_PROF.match(lines[co_idx]):
             candidate = lines[co_idx]
@@ -160,7 +159,7 @@ def extract_title_page_fields(pdf_bytes):
         else:
             co_idx_used = advisor_idx
 
-        # ── 5. Location + date: next line after co-advisor ─────────────
+        # Ã¢â€â‚¬Ã¢â€â‚¬ 5. Location + date: next line after co-advisor Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
         loc_date_idx = co_idx_used + 1
         if loc_date_idx < len(lines):
             loc_date = lines[loc_date_idx]
@@ -180,7 +179,7 @@ def extract_title_page_fields(pdf_bytes):
                 else:
                     result["submission_date"] = loc_date
 
-        # ── 6. Student name: line after location/date ──────────────────
+        # Ã¢â€â‚¬Ã¢â€â‚¬ 6. Student name: line after location/date Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
         name_idx = loc_date_idx + 1
         if name_idx < len(lines):
             candidate = lines[name_idx]
@@ -190,7 +189,7 @@ def extract_title_page_fields(pdf_bytes):
                     and not candidate.isdigit()):
                 result["student_name"] = candidate
 
-        # ── 7. Student ID: next line after name (standalone or in parens) ──
+        # Ã¢â€â‚¬Ã¢â€â‚¬ 7. Student ID: next line after name (standalone or in parens) Ã¢â€â‚¬Ã¢â€â‚¬
         id_idx = name_idx + 1
         if id_idx < len(lines):
             id_line = lines[id_idx]
@@ -202,7 +201,7 @@ def extract_title_page_fields(pdf_bytes):
                 if m_id:
                     result["student_id"] = m_id.group(1)
 
-        # ── Regex fallbacks for fields still missing ────────────────────
+        # Ã¢â€â‚¬Ã¢â€â‚¬ Regex fallbacks for fields still missing Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
         if not result["student_id"]:
             # Scan all lines for a standalone 6-10 digit number
             for i, line in enumerate(lines):
@@ -247,11 +246,11 @@ def extract_title_page_fields(pdf_bytes):
     return result
 
 
-# ─────────────────────────────────────────────
+# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 # GRADE CALCULATION
-# ─────────────────────────────────────────────
+# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 def convert_points_to_grade(points):
-    """Lookup Dezimalnote from OMBA Notenübersicht (table sorted descending)."""
+    """Lookup Dezimalnote from OMBA NotenÃƒÂ¼bersicht (table sorted descending)."""
     if points is None:
         return None
     p = float(points)
@@ -277,9 +276,9 @@ def compute_weighted_grade(thesis_points, defense_points):
     }
 
 
-# ─────────────────────────────────────────────
+# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 # DOCX HELPERS
-# ─────────────────────────────────────────────
+# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 def set_cell_shading(cell, fill_hex):
     tc = cell._tc
     tcPr = tc.get_or_add_tcPr()
@@ -313,9 +312,9 @@ def set_page_layout(doc):
     section.bottom_margin = 720720
 
 
-# ─────────────────────────────────────────────
-# DOCX GENERATION – PART 1
-# ─────────────────────────────────────────────
+# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+# DOCX GENERATION Ã¢â‚¬â€œ PART 1
+# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 def generate_part1_docx(data):
     doc = Document()
     set_page_layout(doc)
@@ -355,9 +354,9 @@ def generate_part1_docx(data):
 
     doc.add_paragraph()
 
-    # ── Rubric Table ──────────────────────────────────────────
+    # Ã¢â€â‚¬Ã¢â€â‚¬ Rubric Table Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     # 8 columns: Criterion | Excellent | Very Good | Good | Satisfactory | Sufficient | Fail | N/A
-    # Rows: 1 merged title + 1 column headers + 9 criteria × 2 rows + 1 total = 21
+    # Rows: 1 merged title + 1 column headers + 9 criteria Ãƒâ€” 2 rows + 1 total = 21
     col_widths = [2017395, 700405, 678180, 678180, 719455, 701675, 667385, 705485]
     num_criteria = len(data["criteria"])
     num_rows = 2 + num_criteria * 2 + 1
@@ -403,7 +402,7 @@ def generate_part1_docx(data):
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
         set_cell_shading(cell, "DEEAF1")
 
-    # Grade column mapping: col 1 = Excellent … col 7 = N/A
+    # Grade column mapping: col 1 = Excellent Ã¢â‚¬Â¦ col 7 = N/A
     grade_to_col = {
         "Excellent": 1, "Very Good": 2, "Good": 3,
         "Satisfactory": 4, "Sufficient": 5, "Fail": 6, "N/A": 7,
@@ -434,7 +433,7 @@ def generate_part1_docx(data):
             p.alignment = WD_ALIGN_PARAGRAPH.CENTER
             p.runs[0].font.size = Pt(11)
 
-        # Comments row – merge across all 8 cols
+        # Comments row Ã¢â‚¬â€œ merge across all 8 cols
         comm_row = table.rows[comm]
         comm_row.cells[0].merge(comm_row.cells[7])
         comm_row.cells[0].text = ""
@@ -467,7 +466,7 @@ def generate_part1_docx(data):
     set_cell_shading(total_row.cells[0], "FFF2CC")
     set_cell_shading(total_row.cells[1], "FFF2CC")
 
-    # ── Scoring summary ───────────────────────────────────────
+    # Ã¢â€â‚¬Ã¢â€â‚¬ Scoring summary Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     doc.add_paragraph()
     p = doc.add_paragraph()
     p.add_run("Evaluation of the Written Thesis").bold = True
@@ -507,7 +506,7 @@ def generate_part1_docx(data):
         p.add_run("Signature Third Assessor: ").bold = True
         p.add_run("_" * 45)
 
-    # ── Signatures ────────────────────────────────────────────
+    # Ã¢â€â‚¬Ã¢â€â‚¬ Signatures Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     doc.add_paragraph()
     doc.add_paragraph()
     p = doc.add_paragraph()
@@ -525,9 +524,9 @@ def generate_part1_docx(data):
     return buf
 
 
-# ─────────────────────────────────────────────
-# DOCX GENERATION – PART 2
-# ─────────────────────────────────────────────
+# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+# DOCX GENERATION Ã¢â‚¬â€œ PART 2
+# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 def generate_part2_docx(data):
     doc = Document()
     set_page_layout(doc)
@@ -535,7 +534,7 @@ def generate_part2_docx(data):
     for para in doc.paragraphs:
         para.clear()
 
-    # ── SECTION 1: Defense Evaluation ─────────────────────────
+    # Ã¢â€â‚¬Ã¢â€â‚¬ SECTION 1: Defense Evaluation Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     h = doc.add_heading("Master Thesis Defense", level=1)
     h.alignment = WD_ALIGN_PARAGRAPH.LEFT
 
@@ -587,6 +586,7 @@ def generate_part2_docx(data):
     combined_rows = [
         ("Written Thesis",
          f"{data['thesis_points']} / 100    "
+         f"Grade: {data['thesis_grade']}    "
          f"(Weighted: {data['weighted_thesis']} / 75)"),
         ("Thesis Defense",
          f"{data['defense_points']} / 100    "
@@ -619,14 +619,14 @@ def generate_part2_docx(data):
     p.add_run("Signature Second Supervisor: ").bold = True
     p.add_run("_" * 45)
 
-    # ── PAGE BREAK ────────────────────────────────────────────
+    # Ã¢â€â‚¬Ã¢â€â‚¬ PAGE BREAK Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     doc.add_page_break()
 
-    # ── SECTION 2: Defense Protocol ───────────────────────────
+    # Ã¢â€â‚¬Ã¢â€â‚¬ SECTION 2: Defense Protocol Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
     h = doc.add_heading("Master Thesis Defense Protocol", level=1)
     h.alignment = WD_ALIGN_PARAGRAPH.LEFT
 
-    # Protocol table (10 rows × 2 cols)
+    # Protocol table (10 rows Ãƒâ€” 2 cols)
     proto_table = doc.add_table(rows=10, cols=2)
     proto_table.style = "Table Grid"
     for cell in proto_table.columns[0].cells:
@@ -646,7 +646,7 @@ def generate_part2_docx(data):
         ("Program(s)",           data["program"]),
         ("Title of the Thesis",  data["thesis_title"]),
         ("Date",                 data["defense_date"]),
-        ("Time [Start – End]",   time_str),
+        ("Time [Start Ã¢â‚¬â€œ End]",   time_str),
         ("Duration",             "20\u201330 minutes per candidate"),
         ("Mode",                 data["mode"]),
         ("Location/Link",        data["location_link"]),
@@ -757,66 +757,11 @@ def generate_part2_docx(data):
     return buf
 
 
-# ─────────────────────────────────────────────
-# SESSION EXPORT / IMPORT
-# ─────────────────────────────────────────────
+# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
-# All state keys that are persisted in the saved JSON file
-_EXPORT_KEYS = [
-    "student_name", "student_id", "thesis_title", "submission_date",
-    "first_supervisor", "second_supervisor",
-    "thesis_points", "criteria", "criterion_9_label", "general_comments_p1",
-    "third_assessor_decision", "third_assessor_proposed_grade",
-    "defense_date", "defense_program", "defense_time_start", "defense_time_end",
-    "defense_mode", "defense_location_link",
-    "defense_first_examiner", "defense_second_examiner", "defense_group_work",
-    "topics", "answers", "special_circumstances", "defense_points",
-]
-
-# Widget keys that must be cleared before restoring so inputs re-render
-_WIDGET_KEYS = (
-    ["hdr_title", "hdr_name", "hdr_id", "hdr_subdate", "hdr_sup1", "hdr_sup2",
-     "p1_gen_comments", "p1_thesis_pts", "crit9_label_input",
-     "third_decision_radio", "third_proposed_input",
-     "p2_defense_date", "p2_program", "p2_tstart", "p2_tend", "p2_mode",
-     "p2_location", "p2_exam1", "p2_exam2", "p2_groupwork",
-     "p2_special_circumstances", "p2_defense_pts"]
-    + [f"input_grade_{i}" for i in range(9)]
-    + [f"input_comment_{i}" for i in range(9)]
-    + [f"p2_topic_{i}" for i in range(6)]
-    + [f"p2_answer_{i}" for i in range(6)]
-)
-
-
-def export_session():
-    """Serialize current evaluation state to JSON bytes."""
-    data = {k: st.session_state.get(k) for k in _EXPORT_KEYS}
-    return json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8")
-
-
-def load_session(json_bytes):
-    """
-    Restore session state from JSON bytes.
-    Clears all widget keys first so Streamlit re-renders inputs with restored values.
-    Returns True on success, False on parse error.
-    """
-    try:
-        data = json.loads(json_bytes.decode("utf-8"))
-    except Exception:
-        return False
-    for wk in _WIDGET_KEYS:
-        st.session_state.pop(wk, None)
-    for k, v in data.items():
-        if k in _EXPORT_KEYS:
-            st.session_state[k] = v
-    # Mark as already extracted so the PDF upload prompt stays collapsed
-    st.session_state.pdf_extracted = True
-    return True
-
-
-# ─────────────────────────────────────────────
+# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 # SESSION STATE
-# ─────────────────────────────────────────────
+# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 def init_session_state():
     defaults = {
         "student_name": "",
@@ -854,9 +799,9 @@ def init_session_state():
             st.session_state[key] = val
 
 
-# ─────────────────────────────────────────────
+# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 # DATA COLLECTORS
-# ─────────────────────────────────────────────
+# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 def collect_part1_data():
     total_pts = st.session_state.thesis_points or 0
     defense_pts = st.session_state.defense_points or 0
@@ -904,15 +849,16 @@ def collect_part2_data():
         "defense_grade": grades["defense_grade"],
         "weighted_defense": grades["weighted_defense"],
         "thesis_points": total_thesis,
+        "thesis_grade": grades["thesis_grade"],
         "weighted_thesis": grades["weighted_thesis"],
         "combined_points": grades["combined_points"],
         "combined_grade": grades["combined_grade"],
     }
 
 
-# ─────────────────────────────────────────────
+# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 # UI SECTIONS
-# ─────────────────────────────────────────────
+# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 def render_sidebar():
     with st.sidebar:
         st.header("Grade Summary")
@@ -925,17 +871,17 @@ def render_sidebar():
         col1, col2 = st.columns(2)
         col1.metric("Points", f"{total_thesis}/100")
         col2.metric("Grade", str(grades["thesis_grade"]))
-        st.metric("Weighted (×0.75)", f"{grades['weighted_thesis']}/75")
+        st.metric("Weighted (x0.75)", f"{grades['weighted_thesis']}/75")
 
         if grades["thesis_grade"] == 5.0:
-            st.error("Grade 5.0 – third assessor required")
+            st.error("Grade 5.0 - third assessor required")
 
         st.divider()
         st.subheader("Defense")
         col1, col2 = st.columns(2)
         col1.metric("Points", f"{defense_pts}/100")
         col2.metric("Grade", str(grades["defense_grade"]))
-        st.metric("Weighted (×0.25)", f"{grades['weighted_defense']}/25")
+        st.metric("Weighted (x0.25)", f"{grades['weighted_defense']}/25")
 
         if defense_pts < 50:
             st.warning("Below passing threshold (50 pts)")
@@ -947,32 +893,13 @@ def render_sidebar():
         col2.metric("Final Grade", str(grades["combined_grade"]))
 
         st.divider()
-        st.caption("Grades per OMBA Notenübersicht (Dezimalnote)")
-        st.caption("Thesis 75% · Defense 25%")
+        st.caption("Grades per OMBA Notenuebersicht (Dezimalnote)")
+        st.caption("Thesis 75% | Defense 25%")
 
-
-def render_session_upload():
-    """Expander that lets users reload a previously saved evaluation session (JSON)."""
-    with st.expander("Continue from a previous evaluation (load saved progress)", expanded=False):
-        st.caption(
-            "Upload the JSON file that was saved after completing Part 1 to pre-fill "
-            "all student and thesis information and pick up where you left off."
-        )
-        uploaded_json = st.file_uploader(
-            "Upload saved evaluation (.json)", type=["json"], key="session_uploader"
-        )
-        if uploaded_json is not None:
-            if st.button("Load saved evaluation", key="btn_load_session"):
-                ok = load_session(uploaded_json.read())
-                if ok:
-                    st.success("Evaluation loaded – all fields have been restored.")
-                    st.rerun()
-                else:
-                    st.error("Could not read the file. Make sure it is a valid saved evaluation JSON.")
 
 
 def render_pdf_upload():
-    # Maps: extracted field key → (backing state key, header widget key)
+    # Maps: extracted field key -> (backing state key, header widget key)
     FIELD_MAP = [
         ("thesis_title",    "thesis_title",      "hdr_title"),
         ("student_name",    "student_name",       "hdr_name"),
@@ -982,7 +909,7 @@ def render_pdf_upload():
         ("co_advisor",      "second_supervisor",  "hdr_sup2"),
     ]
 
-    with st.expander("Upload Thesis PDF – auto-fill from title page", expanded=not st.session_state.pdf_extracted):
+    with st.expander("Upload Thesis PDF - auto-fill from title page", expanded=not st.session_state.pdf_extracted):
         uploaded = st.file_uploader("Choose thesis PDF", type=["pdf"], key="pdf_uploader")
 
         if uploaded is not None and not st.session_state.pdf_extracted:
@@ -1003,10 +930,10 @@ def render_pdf_upload():
 
             if populated:
                 st.success(
-                    f"Extracted: **{fields.get('student_name') or '—'}** "
-                    f"({fields.get('student_id') or '—'})  \n"
+                    f"Extracted: **{fields.get('student_name') or '-'}** "
+                    f"({fields.get('student_id') or '-'})  \n"
                     f"Thesis: *{fields.get('thesis_title', '')[:80]}*  \n"
-                    f"Date: {fields.get('submission_date') or '—'}"
+                    f"Date: {fields.get('submission_date') or '-'}"
                 )
                 st.rerun()   # re-render so text_input widgets show extracted values
             else:
@@ -1055,7 +982,7 @@ def render_part1():
         key="p1_gen_comments",
     )
 
-    # Evaluation Criteria (grade level + comments only – no per-criterion points)
+    # Evaluation Criteria (grade level + comments only - no per-criterion points)
     st.subheader("Evaluation Criteria")
     st.info("Select a grade level for each criterion and add comments where relevant.")
 
@@ -1110,7 +1037,7 @@ def render_part1():
 
     with col_pts:
         st.session_state.thesis_points = st.number_input(
-            "Total Points (0–100)",
+            "Total Points (0-100)",
             min_value=0, max_value=100,
             value=st.session_state.thesis_points,
             step=1,
@@ -1122,11 +1049,11 @@ def render_part1():
     weighted_pts = round(thesis_pts * 0.75, 1)
 
     col_grade_display.metric("Dezimalnote (German grade)", str(thesis_grade))
-    col_weighted.metric("Weighted Points (×0.75)", f"{weighted_pts} / 75")
+    col_weighted.metric("Weighted Points (x0.75)", f"{weighted_pts} / 75")
 
     # Third assessor (conditional)
     if thesis_grade == 5.0:
-        st.error("Grade 5.0 – Third assessor evaluation is required per WHU policy.")
+        st.error("Grade 5.0 - Third assessor evaluation is required per WHU policy.")
         with st.expander("Third Assessor Section", expanded=True):
             st.session_state.third_assessor_decision = st.radio(
                 "Third assessor decision",
@@ -1221,7 +1148,7 @@ def render_part2():
     # Defense Evaluation
     st.subheader("Defense Score")
     st.session_state.defense_points = st.number_input(
-        "Defense Points (0–100)",
+        "Defense Points (0-100)",
         min_value=0, max_value=100,
         value=st.session_state.defense_points,
         step=1,
@@ -1234,7 +1161,7 @@ def render_part2():
 
     col1, col2, col3 = st.columns(3)
     col1.metric("Defense Grade", str(grades["defense_grade"]))
-    col2.metric("Weighted Defense (×0.25)", f"{grades['weighted_defense']}/25")
+    col2.metric("Weighted Defense (x0.25)", f"{grades['weighted_defense']}/25")
     col3.metric("Combined Grade", str(grades["combined_grade"]))
 
     if defense_pts < 50:
@@ -1244,12 +1171,12 @@ def render_part2():
 def render_downloads():
     st.divider()
     st.subheader("Download Evaluation Documents")
-    col1, col2, col3 = st.columns(3)
+    col1, col2 = st.columns(2)
 
     suffix = (st.session_state.student_name or "Student").replace(" ", "_")
 
     with col1:
-        st.markdown("**Part 1 – Written Thesis Evaluation**")
+        st.markdown("**Part 1 - Written Thesis Evaluation**")
         data_p1 = collect_part1_data()
         buf_p1 = generate_part1_docx(data_p1)
         st.download_button(
@@ -1261,7 +1188,7 @@ def render_downloads():
         )
 
     with col2:
-        st.markdown("**Part 2 – Defense Evaluation & Protocol**")
+        st.markdown("**Part 2 - Defense Evaluation & Protocol**")
         data_p2 = collect_part2_data()
         buf_p2 = generate_part2_docx(data_p2)
         st.download_button(
@@ -1272,25 +1199,10 @@ def render_downloads():
             use_container_width=True,
         )
 
-    with col3:
-        st.markdown("**Save Progress (for Defense session)**")
-        st.caption(
-            "Download this file after completing Part 1. "
-            "Upload it at the start of the Defense session to restore all data."
-        )
-        json_bytes = export_session()
-        st.download_button(
-            label="Save Progress (JSON)",
-            data=json_bytes,
-            file_name=f"Thesis_Evaluation_Progress_{suffix}.json",
-            mime="application/json",
-            use_container_width=True,
-        )
 
-
-# ─────────────────────────────────────────────
+# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 # MAIN
-# ─────────────────────────────────────────────
+# Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 def main():
     st.set_page_config(
         page_title="Master Thesis Evaluation",
@@ -1305,7 +1217,6 @@ def main():
     st.title("Master Thesis Evaluation Form")
     st.caption("WHU \u2013 Otto Beisheim School of Management  |  Chair of Entrepreneurship, Innovation and Technological Transformation")
 
-    render_session_upload()
     render_pdf_upload()
     st.divider()
     render_header_fields()
@@ -1327,3 +1238,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
